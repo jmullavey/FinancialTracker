@@ -164,6 +164,7 @@ export interface ParseJob {
   parsedTransactions: number
   errorMessage?: string
   previewData?: any
+  allTransactions?: any[]
   createdAt: string
   updatedAt: string
 }

@@ -326,4 +326,11 @@ async function startServer() {
   }
 }
 
-startServer();
+// Only start server if not in Vercel serverless environment
+// In Vercel, the serverless function handler will call the app directly
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+// Export app for Vercel serverless functions
+export default app;

@@ -148,7 +148,7 @@ router.post('/parse', authenticateToken, upload.single('file'), async (req: Auth
       const parseJob = await db.parseJobs.create({
         uploadId: uploadRecord.id,
         userId,
-        status: parseResult.transactions.length > 0 ? 'completed' : 'error',
+        status: parseResult.transactions.length > 0 ? 'completed' : 'failed',
         progress: parseResult.transactions.length > 0 ? 100 : 0,
         totalTransactions: parseResult.totalCount,
         parsedTransactions: parseResult.transactions.length,
@@ -185,7 +185,7 @@ router.post('/parse', authenticateToken, upload.single('file'), async (req: Auth
       const parseJob = await db.parseJobs.create({
         uploadId: uploadRecord.id,
         userId,
-        status: 'error',
+        status: 'failed',
         progress: 0,
         totalTransactions: 0,
         parsedTransactions: 0,
@@ -210,7 +210,7 @@ router.post('/parse', authenticateToken, upload.single('file'), async (req: Auth
       });
     } else {
       await db.uploads.update(uploadRecord.id, {
-        status: 'error',
+        status: 'failed',
         updatedAt: getCurrentTimestamp()
       });
 

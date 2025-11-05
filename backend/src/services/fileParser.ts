@@ -697,9 +697,24 @@ export class FileParser {
    * - Balance (optional, informational only)
    */
   private static async parsePDFLegacy(buffer: Buffer): Promise<ParseResult> {
+    const transactions: any[] = [];
+    const errors: string[] = [];
+    
     try {
       const pdfData = await pdfParse(buffer);
       const text = pdfData.text;
+
+      // Pattern: ^\s*\d{1,2}/\d{1,2}(?:/\d{2,4})?
+      const datePattern = /^\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/;
+      const amountPattern = /[\$£€]?\s*\(?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})?\s*\)?/g;
+      
+      // Keyword arrays for detection
+      const withdrawalKeywords = ['withdrawal', 'debit', 'payment', 'charge', 'purchase', 'atm', 'fee'];
+      const depositKeywords = ['deposit', 'credit', 'income', 'salary', 'refund', 'transfer received'];
+      const balanceKeywords = ['balance', 'available', 'current balance', 'ending balance'];
+      
+      // Split text into lines
+      const lines = text.split(/\r?\n/);
 
       // Find transaction start - look for header row or first date
       let startIndex = 0;
@@ -746,7 +761,7 @@ export class FileParser {
       }
 
       // Transaction structure
-      interface TransactionData {
+      type TransactionData = {
         date?: string;
         description: string[];
         withdrawalAmount?: number;
@@ -754,7 +769,7 @@ export class FileParser {
         balance?: number;
         withdrawalLine?: string;
         depositLine?: string;
-      }
+      };
 
       let currentTransaction: TransactionData = {
         description: []
@@ -952,7 +967,16 @@ export class FileParser {
         console.log('PDF Parser - Emergency fallback transactions found:', transactions.length);
       }
 
-      if (transactions.length === 0) {
+      // Remove duplicates
+      const uniqueTransactions = transactions.filter((transaction, index, self) => {
+        return index === self.findIndex(t => 
+          t.date === transaction.date &&
+          Math.abs(t.amount - transaction.amount) < 0.01 &&
+          t.description.substring(0, 30) === transaction.description.substring(0, 30)
+        );
+      });
+
+      if (uniqueTransactions.length === 0) {
         // Enhanced error message with diagnostic info
         const sampleLines = lines.slice(startIndex, Math.min(startIndex + 10, lines.length))
           .filter(l => l.length > 0)
@@ -964,26 +988,11 @@ export class FileParser {
         if (sampleLines.length > 0) {
           errors.push(`Sample lines from PDF: ${sampleLines.join(' | ').substring(0, 200)}`);
         }
-      } else {
-        // Remove duplicates
-        const uniqueTransactions = transactions.filter((transaction, index, self) => {
-          return index === self.findIndex(t => 
-            t.date === transaction.date &&
-            Math.abs(t.amount - transaction.amount) < 0.01 &&
-            t.description.substring(0, 30) === transaction.description.substring(0, 30)
-          );
-        });
-
-        return {
-          transactions: uniqueTransactions,
-          totalCount: uniqueTransactions.length,
-          errors
-        };
       }
 
       return {
-        transactions,
-        totalCount: transactions.length,
+        transactions: uniqueTransactions,
+        totalCount: uniqueTransactions.length,
         errors
       };
     } catch (error: any) {
@@ -1043,7 +1052,15 @@ export class FileParser {
    * Uses intelligent logic: if withdrawal amount exists, it's a withdrawal (negative)
    * If deposit amount exists, it's a deposit (positive)
    */
-  private static buildTransactionFromData(data: TransactionData): ParsedTransaction | null {
+  private static buildTransactionFromData(data: {
+    date?: string;
+    description: string[];
+    withdrawalAmount?: number;
+    depositAmount?: number;
+    balance?: number;
+    withdrawalLine?: string;
+    depositLine?: string;
+  }): ParsedTransaction | null {
     if (!data.date) return null;
 
     let amount = 0;

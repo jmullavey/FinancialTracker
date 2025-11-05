@@ -129,7 +129,7 @@ router.post('/register', authLimiter, async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
     );
 
     logSecurityEvent(req, 'login_success', { userId: user.id, email: user.email });
@@ -228,7 +228,7 @@ router.post('/login', authLimiter, async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
     );
 
     res.json({

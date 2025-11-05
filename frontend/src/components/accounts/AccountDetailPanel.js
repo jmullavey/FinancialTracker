@@ -1,0 +1,20 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Upload, Edit3 } from 'lucide-react';
+import { listTransactions } from '../../services/accountsStore';
+import { Link } from 'react-router-dom';
+export function AccountDetailPanel({ account, onEdit, onUpload }) {
+    if (!account) {
+        return (_jsx("div", { className: "card h-full flex items-center justify-center", children: _jsx("div", { className: "text-center", children: _jsx("p", { className: "text-gray-500", children: "Select an account to view details" }) }) }));
+    }
+    const transactions = listTransactions(account.id).slice(0, 10);
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(amount);
+    };
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString();
+    };
+    return (_jsxs("div", { className: "card h-full flex flex-col", children: [_jsxs("div", { className: "flex items-center justify-between mb-6", children: [_jsxs("div", { children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900", children: account.name }), _jsx("p", { className: "text-sm text-gray-500 capitalize", children: account.account_type })] }), _jsxs("div", { className: "flex items-center gap-2", children: [onUpload && (_jsx(Link, { to: "/transactions", className: "p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded", title: "Upload Statement", children: _jsx(Upload, { className: "h-4 w-4" }) })), onEdit && (_jsx("button", { onClick: () => onEdit(account), className: "p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded", title: "Edit Account", children: _jsx(Edit3, { className: "h-4 w-4" }) }))] })] }), _jsxs("div", { className: "space-y-4 mb-6", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm text-gray-500", children: "Current Balance" }), _jsx("p", { className: `text-2xl font-bold ${account.current_balance >= 0 ? 'text-green-600' : 'text-red-600'}`, children: formatCurrency(account.current_balance) })] }), account.institution_name && (_jsxs("div", { children: [_jsx("p", { className: "text-sm text-gray-500", children: "Institution" }), _jsx("p", { className: "text-sm font-medium text-gray-900", children: account.institution_name })] })), account.masked_number && (_jsxs("div", { children: [_jsx("p", { className: "text-sm text-gray-500", children: "Account Number" }), _jsxs("p", { className: "text-sm font-medium text-gray-900", children: ["****", account.masked_number] })] })), _jsxs("div", { children: [_jsx("p", { className: "text-sm text-gray-500", children: "Created" }), _jsx("p", { className: "text-sm font-medium text-gray-900", children: formatDate(account.created_at) })] })] }), _jsxs("div", { className: "flex-1 overflow-hidden flex flex-col", children: [_jsx("h4", { className: "text-sm font-medium text-gray-700 mb-3", children: "Recent Transactions" }), _jsx("div", { className: "flex-1 overflow-y-auto", children: transactions.length > 0 ? (_jsx("div", { className: "space-y-2", children: transactions.map((tx) => (_jsxs("div", { className: "flex items-center justify-between py-2 border-b border-gray-100", children: [_jsxs("div", { className: "flex-1 min-w-0", children: [_jsx("p", { className: "text-sm font-medium text-gray-900 truncate", children: tx.description }), _jsx("p", { className: "text-xs text-gray-500", children: formatDate(tx.date) })] }), _jsxs("div", { className: "text-right ml-4", children: [_jsx("p", { className: `text-sm font-medium ${tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}`, children: formatCurrency(tx.amount) }), _jsx("p", { className: "text-xs text-gray-500 capitalize", children: tx.type })] })] }, tx.id))) })) : (_jsxs("div", { className: "text-center py-8", children: [_jsx("p", { className: "text-sm text-gray-500", children: "No transactions yet" }), onUpload && (_jsxs(Link, { to: "/transactions", className: "mt-2 inline-flex items-center text-sm text-primary-600 hover:text-primary-700", children: [_jsx(Upload, { className: "h-4 w-4 mr-1" }), "Upload Statement"] }))] })) })] })] }));
+}

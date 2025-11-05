@@ -5,6 +5,16 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
+  },
+  optimizeDeps: {
+    include: ['react-is']
+  },
   plugins: [
     react(),
     VitePWA({

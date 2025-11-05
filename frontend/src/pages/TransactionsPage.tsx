@@ -195,7 +195,7 @@ export function TransactionsPage() {
 
   const handleBulkEdit = () => {
     // In a real app, you'd open a bulk edit modal
-    toast.info('Bulk edit feature coming soon!')
+    toast('Bulk edit feature coming soon!')
   }
 
   const handleBulkExport = () => {
