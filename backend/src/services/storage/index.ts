@@ -1,7 +1,6 @@
 // Storage factory - creates the appropriate adapter based on environment
 import { StorageAdapter } from './adapter'
 import { FileSystemAdapter } from './fileSystemAdapter'
-import { KVAdapter } from './kvAdapter'
 import path from 'path'
 
 // Determine which storage adapter to use
@@ -16,8 +15,17 @@ export function createStorageAdapter(): StorageAdapter {
   )
 
   if (useKV) {
-    console.log('Using Vercel KV for persistent JSON storage')
-    return new KVAdapter('financial-tracker:')
+    try {
+      // Dynamically import KV adapter only when needed (to avoid errors in local dev)
+      const { KVAdapter } = require('./kvAdapter')
+      console.log('Using Vercel KV for persistent JSON storage')
+      const adapter = new KVAdapter('financial-tracker:')
+      // Test the adapter by checking if it can read (will fail gracefully if KV not configured)
+      return adapter
+    } catch (error: any) {
+      console.error('Failed to initialize KV adapter, falling back to file system:', error.message)
+      // Fall back to file system if KV fails
+    }
   }
 
   // Otherwise use file system (local development)

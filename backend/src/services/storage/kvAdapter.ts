@@ -1,6 +1,18 @@
 // Vercel KV storage adapter (for production on Vercel)
-import { kv } from '@vercel/kv'
 import { StorageAdapter } from './adapter'
+
+// Lazy load @vercel/kv to avoid errors in local development
+let kv: any = null
+function getKV() {
+  if (!kv) {
+    try {
+      kv = require('@vercel/kv').kv
+    } catch (error) {
+      throw new Error('Vercel KV is not available. Make sure @vercel/kv is installed and KV environment variables are set.')
+    }
+  }
+  return kv
+}
 
 export class KVAdapter implements StorageAdapter {
   private prefix: string
@@ -15,7 +27,8 @@ export class KVAdapter implements StorageAdapter {
 
   async read(key: string): Promise<string | null> {
     try {
-      const value = await kv.get<string>(this.getKey(key))
+      const kvInstance = getKV()
+      const value = await kvInstance.get(this.getKey(key)) as string | null
       return value || null
     } catch (error) {
       console.error(`KV read error for key ${key}:`, error)
@@ -25,7 +38,8 @@ export class KVAdapter implements StorageAdapter {
 
   async write(key: string, data: string): Promise<void> {
     try {
-      await kv.set(this.getKey(key), data)
+      const kvInstance = getKV()
+      await kvInstance.set(this.getKey(key), data)
     } catch (error) {
       console.error(`KV write error for key ${key}:`, error)
       throw error
@@ -34,7 +48,8 @@ export class KVAdapter implements StorageAdapter {
 
   async delete(key: string): Promise<void> {
     try {
-      await kv.del(this.getKey(key))
+      const kvInstance = getKV()
+      await kvInstance.del(this.getKey(key))
     } catch (error) {
       console.error(`KV delete error for key ${key}:`, error)
       throw error
@@ -43,7 +58,8 @@ export class KVAdapter implements StorageAdapter {
 
   async exists(key: string): Promise<boolean> {
     try {
-      const value = await kv.get(this.getKey(key))
+      const kvInstance = getKV()
+      const value = await kvInstance.get(this.getKey(key))
       return value !== null
     } catch {
       return false
