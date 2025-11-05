@@ -385,50 +385,47 @@ export function RegisterPage() {
               </div>
 
               <div className="floating-input-wrapper relative">
-                <div className="relative">
-                  <input
-                    ref={passwordInputRef}
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    onFocus={(e) => {
-                      e.target.classList.add('focused')
-                    }}
-                    onBlur={(e) => {
-                      e.target.classList.remove('focused')
-                      if (e.target.value.length > 0) {
-                        e.target.classList.add('filled')
-                      } else {
-                        e.target.classList.remove('filled')
-                      }
-                    }}
-                    className="floating-input w-full px-4 pt-6 pb-2 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white/50 backdrop-blur-sm placeholder:opacity-0"
-                    placeholder=" "
-                  />
-                  <label 
-                    htmlFor="password" 
-                    className="floating-label absolute left-4 pointer-events-none origin-left"
-                  >
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors z-10 flex items-center justify-center"
-                    style={{ 
-                      top: 'calc(1.5rem + 0.1875rem)',
-                      transform: 'translateY(-50%)',
-                      height: '20px'
-                    }}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
+                <input
+                  ref={passwordInputRef}
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  onFocus={(e) => {
+                    e.target.classList.add('focused')
+                  }}
+                  onBlur={(e) => {
+                    e.target.classList.remove('focused')
+                    if (e.target.value.length > 0) {
+                      e.target.classList.add('filled')
+                    } else {
+                      e.target.classList.remove('filled')
+                    }
+                  }}
+                  className="floating-input w-full px-4 pt-6 pb-2 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white/50 backdrop-blur-sm placeholder:opacity-0"
+                  placeholder=" "
+                />
+                <label 
+                  htmlFor="password" 
+                  className="floating-label absolute left-4 pointer-events-none origin-left"
+                >
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors z-10 flex items-center justify-center"
+                  style={{ 
+                    top: 'calc(1.5rem + 0.5rem)',
+                    transform: 'translateY(-50%)'
+                  }}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
                 {/* Password Strength Indicator */}
                 {formData.password && (
                   <div className="mt-2">
