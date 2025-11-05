@@ -1,43 +1,37 @@
-import fs from 'fs/promises'
-import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { storageAdapter } from './storage'
 
-// Use /tmp for serverless environments (Vercel), otherwise use ./data
-const DATA_DIR = process.env.VERCEL 
-  ? path.join('/tmp', 'financial-tracker-data')
-  : path.join(process.cwd(), process.env.DATA_DIR || 'data')
-
-// Ensure data directory exists
-async function ensureDataDir() {
-  try {
-    await fs.access(DATA_DIR)
-  } catch {
-    await fs.mkdir(DATA_DIR, { recursive: true })
-  }
-}
-
-// Generic JSON file manager
+// Generic JSON file manager - works with both file system and Vercel KV
 class JsonFileManager<T extends { id: string }> {
-  private filePath: string
+  private filename: string
   private data: T[] = []
   private initialized = false
 
   constructor(filename: string) {
-    this.filePath = path.join(DATA_DIR, filename)
+    this.filename = filename
   }
 
   private async init() {
     if (this.initialized) return
-
-    await ensureDataDir()
     
     try {
-      const fileContent = await fs.readFile(this.filePath, 'utf-8')
-      this.data = JSON.parse(fileContent)
-    } catch (error) {
-      // File doesn't exist or is empty, start with empty array
-      this.data = []
-      await this.save()
+      const fileContent = await storageAdapter.read(this.filename)
+      if (fileContent) {
+        this.data = JSON.parse(fileContent)
+      } else {
+        // File doesn't exist, start with empty array
+        this.data = []
+        await this.save()
+      }
+    } catch (error: any) {
+      // If parse error, start fresh
+      if (error.message?.includes('JSON') || error.message?.includes('parse')) {
+        console.warn(`Invalid JSON in ${this.filename}, starting fresh:`, error.message)
+        this.data = []
+        await this.save()
+      } else {
+        throw error
+      }
     }
     
     this.initialized = true
@@ -45,10 +39,10 @@ class JsonFileManager<T extends { id: string }> {
 
   private async save() {
     try {
-      await ensureDataDir()
-      await fs.writeFile(this.filePath, JSON.stringify(this.data, null, 2))
+      const jsonData = JSON.stringify(this.data, null, 2)
+      await storageAdapter.write(this.filename, jsonData)
     } catch (error: any) {
-      console.error(`Failed to save ${this.filePath}:`, error)
+      console.error(`Failed to save ${this.filename}:`, error)
       throw new Error(`Failed to save data: ${error.message}`)
     }
   }

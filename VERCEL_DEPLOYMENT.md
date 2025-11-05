@@ -1,31 +1,42 @@
 # Vercel Deployment Guide
 
-## ⚠️ Important Limitations
+## ✅ JSON Persistence Solution
 
-**File Storage**: The current JSON file storage implementation uses the local filesystem, which is **read-only** in Vercel's serverless environment (except for `/tmp`). This means:
+**JSON Storage**: The application now uses **Vercel KV** (Redis) for persistent JSON storage on Vercel, while maintaining the same JSON format and API.
 
-- ❌ User data stored in JSON files will not persist between deployments
-- ❌ Each serverless function invocation starts fresh
-- ❌ File uploads cannot be stored permanently
+- ✅ **Persistent**: Data survives deployments and cold starts
+- ✅ **Automatic**: Automatically uses Vercel KV when configured, falls back to file system locally
+- ✅ **Same JSON Format**: No database migration needed - still uses JSON files
+- ✅ **Zero Code Changes**: Existing code works without modification
 
-## Solutions for Production
+### Setup JSON Persistence
 
-To make this application work on Vercel, you have several options:
+1. **Create Vercel KV Store**:
+   - Go to Vercel Dashboard → Your Project → Storage
+   - Click "Create Database" → Select "KV"
+   - Choose a name and region
+   - Click "Create"
 
-### Option 1: Use a Database (Recommended)
-- Migrate to a database service (MongoDB Atlas, PostgreSQL, Supabase, etc.)
-- Replace JSON file storage with database queries
-- Best for production scalability
+2. **Environment Variables** (Auto-configured):
+   - Vercel automatically sets `KV_URL`, `KV_REST_API_URL`, and `KV_REST_API_TOKEN`
+   - No manual configuration needed!
 
-### Option 2: Use Vercel KV or Vercel Blob
-- Use Vercel's storage solutions for persistent data
-- Good for small to medium applications
-- Integrated with Vercel platform
+3. **Verify**:
+   - After deployment, check logs for "Using Vercel KV for persistent JSON storage"
 
-### Option 3: Use External Storage
-- Store data in AWS S3, Google Cloud Storage, etc.
+For detailed setup instructions, see **[VERCEL_JSON_PERSISTENCE.md](./VERCEL_JSON_PERSISTENCE.md)**
+
+### Alternative Solutions (If Needed)
+
+If you prefer other storage options:
+
+### Option 1: Use a Database
+- Migrate to PostgreSQL, MongoDB, Supabase, etc.
+- Requires code changes to replace JSON storage
+
+### Option 2: Use Vercel Blob Storage
+- For file uploads and large binary data
 - Already partially implemented in `backend/src/services/s3.ts`
-- Good for file uploads and large data
 
 ## Current Configuration
 
