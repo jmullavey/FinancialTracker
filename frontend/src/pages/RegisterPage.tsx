@@ -419,8 +419,10 @@ export function RegisterPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors z-10 flex items-center justify-center"
                   style={{ 
-                    top: 'calc(1.5rem + 0.5rem)',
-                    transform: 'translateY(-50%)'
+                    top: '27px',
+                    transform: 'translateY(-50%)',
+                    marginTop: 0,
+                    marginBottom: 0
                   }}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
