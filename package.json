@@ -21,5 +21,8 @@
     "@vercel/node": "^5.5.4",
     "concurrently": "^8.2.2",
     "rollup": "^4.52.5"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
