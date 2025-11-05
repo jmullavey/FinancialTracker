@@ -44,7 +44,13 @@ class JsonFileManager<T extends { id: string }> {
   }
 
   private async save() {
-    await fs.writeFile(this.filePath, JSON.stringify(this.data, null, 2))
+    try {
+      await ensureDataDir()
+      await fs.writeFile(this.filePath, JSON.stringify(this.data, null, 2))
+    } catch (error: any) {
+      console.error(`Failed to save ${this.filePath}:`, error)
+      throw new Error(`Failed to save data: ${error.message}`)
+    }
   }
 
   async findAll(): Promise<T[]> {
