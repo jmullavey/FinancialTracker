@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { toast } from 'react-hot-toast'
-import { Eye, EyeOff, Loader2, ArrowRight, Shield, Zap, TrendingUp } from 'lucide-react'
+import { Eye, EyeOff, Loader2, ArrowRight, Shield, Zap, TrendingUp, Mail } from 'lucide-react'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -128,7 +128,15 @@ export function LoginPage() {
       toast.success('Welcome back!')
       navigate('/')
     } catch (error: any) {
-      toast.error(error.message)
+      if (error.message === 'EMAIL_VERIFICATION_REQUIRED') {
+        toast.error('Please verify your email address before logging in.', {
+          duration: 5000,
+          icon: <Mail className="h-5 w-5" />
+        })
+        navigate('/verify-email', { state: { email } })
+      } else {
+        toast.error(error.message)
+      }
     } finally {
       setLoading(false)
     }

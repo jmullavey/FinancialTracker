@@ -100,6 +100,9 @@ export interface User {
   passwordHash: string
   firstName: string
   lastName: string
+  emailVerified: boolean
+  emailVerificationToken?: string
+  emailVerificationTokenExpires?: string
   failedLoginAttempts?: number
   accountLockedUntil?: string
   createdAt: string

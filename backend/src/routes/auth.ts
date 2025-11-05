@@ -2,11 +2,13 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
+import crypto from 'crypto';
 import { db } from '../db/connection';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { getCurrentTimestamp } from '../services/jsonStorage';
 import { authLimiter } from '../middleware/rateLimiter';
 import { logSecurityEvent } from '../middleware/securityLogger';
+import { emailService } from '../services/emailService';
 
 const router = Router();
 
@@ -109,6 +111,10 @@ router.post('/register', authLimiter, async (req, res) => {
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
+    // Generate email verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+
     // Create user
     const now = getCurrentTimestamp();
     const user = await db.users.create({
@@ -116,34 +122,34 @@ router.post('/register', authLimiter, async (req, res) => {
       passwordHash,
       firstName,
       lastName,
+      emailVerified: false,
+      emailVerificationToken: verificationToken,
+      emailVerificationTokenExpires: verificationTokenExpires,
       createdAt: now,
       updatedAt: now
     });
 
-    // Generate JWT token
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET is not configured');
-    }
-    
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
+    // Send verification email
+    const emailSent = await emailService.sendVerificationEmail(
+      user.email,
+      verificationToken,
+      user.firstName
     );
 
     logSecurityEvent(req, 'login_success', { userId: user.id, email: user.email });
 
     res.status(201).json({
-      message: 'User created successfully',
+      message: 'User created successfully. Please check your email to verify your account.',
       user: {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        emailVerified: user.emailVerified,
         createdAt: user.createdAt
       },
-      token
+      emailSent,
+      requiresVerification: true
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -215,6 +221,21 @@ router.post('/login', authLimiter, async (req, res) => {
       });
     }
 
+    // Check if email is verified (optional - can be made required)
+    const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
+    if (requireEmailVerification && !user.emailVerified) {
+      logSecurityEvent(req, 'unauthorized_access', { 
+        userId: user.id, 
+        email, 
+        reason: 'Email not verified' 
+      });
+      return res.status(403).json({ 
+        error: 'Please verify your email address before logging in. Check your inbox for the verification link.',
+        emailVerified: false,
+        canResend: true
+      });
+    }
+
     // Successful login - reset failed attempts
     await handleSuccessfulLogin(user);
     logSecurityEvent(req, 'login_success', { userId: user.id, email });
@@ -237,7 +258,8 @@ router.post('/login', authLimiter, async (req, res) => {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
-        lastName: user.lastName
+        lastName: user.lastName,
+        emailVerified: user.emailVerified
       },
       token
     });
@@ -245,6 +267,115 @@ router.post('/login', authLimiter, async (req, res) => {
     console.error('Login error:', error);
     logSecurityEvent(req, 'suspicious_activity', { error: 'Login failed', details: error });
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Verify email
+router.get('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ error: 'Verification token is required' });
+    }
+
+    // Find user with matching token
+    const allUsers = await db.users.findAll();
+    const user = allUsers.find(u => 
+      u.emailVerificationToken === token &&
+      u.emailVerificationTokenExpires &&
+      new Date(u.emailVerificationTokenExpires) > new Date()
+    );
+
+    if (!user) {
+      return res.status(400).json({ 
+        error: 'Invalid or expired verification token. Please request a new verification email.' 
+      });
+    }
+
+    // Verify email
+    const now = getCurrentTimestamp();
+    await db.users.update(user.id, {
+      emailVerified: true,
+      emailVerificationToken: undefined,
+      emailVerificationTokenExpires: undefined,
+      updatedAt: now
+    });
+
+    logSecurityEvent(req, 'login_success', { 
+      userId: user.id, 
+      email: user.email, 
+      reason: 'Email verified' 
+    });
+
+    res.json({
+      message: 'Email verified successfully. You can now log in to your account.',
+      verified: true
+    });
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({ error: 'Failed to verify email' });
+  }
+});
+
+// Resend verification email
+router.post('/resend-verification', authLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Find user
+    const users = await db.users.findBy('email', email.toLowerCase().trim());
+    if (users.length === 0) {
+      // Don't reveal if user exists for security
+      return res.json({
+        message: 'If an account with that email exists and is not verified, a verification email has been sent.'
+      });
+    }
+
+    const user = users[0];
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return res.json({
+        message: 'Your email is already verified.'
+      });
+    }
+
+    // Generate new verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    // Update user
+    const now = getCurrentTimestamp();
+    await db.users.update(user.id, {
+      emailVerificationToken: verificationToken,
+      emailVerificationTokenExpires: verificationTokenExpires,
+      updatedAt: now
+    });
+
+    // Send verification email
+    await emailService.sendVerificationEmail(
+      user.email,
+      verificationToken,
+      user.firstName
+    );
+
+    logSecurityEvent(req, 'login_success', { 
+      userId: user.id, 
+      email: user.email, 
+      reason: 'Verification email resent' 
+    });
+
+    res.json({
+      message: 'Verification email sent. Please check your inbox.'
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ error: 'Failed to resend verification email' });
   }
 });
 
@@ -263,6 +394,7 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        emailVerified: user.emailVerified,
         createdAt: user.createdAt
       }
     });

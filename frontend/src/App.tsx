@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { LoadingSpinner } from './components/LoadingSpinner'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ReviewPage } from './pages/ReviewPage'
 import { TransactionsPage } from './pages/TransactionsPage'
@@ -30,6 +31,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )

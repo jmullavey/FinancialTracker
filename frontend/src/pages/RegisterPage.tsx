@@ -165,9 +165,15 @@ export function RegisterPage() {
     setLoading(true)
 
     try {
-      await register(formData.email, formData.password, formData.firstName, formData.lastName)
-      toast.success('Account created successfully!')
-      navigate('/')
+      const result = await register(formData.email, formData.password, formData.firstName, formData.lastName)
+      
+      if (result?.requiresVerification) {
+        toast.success('Account created! Please check your email to verify your account.', { duration: 5000 })
+        navigate('/verify-email', { state: { email: formData.email } })
+      } else {
+        toast.success('Account created successfully!')
+        navigate('/')
+      }
     } catch (error: any) {
       toast.error(error.message)
     } finally {
