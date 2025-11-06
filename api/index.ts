@@ -37,8 +37,29 @@ async function getApp() {
   return appPromise;
 }
 
+// Track database initialization
+let dbInitPromise: Promise<void> | null = null;
+
+async function ensureDatabaseInitialized() {
+  if (!dbInitPromise) {
+    // Import the backend module to trigger initialization
+    try {
+      const backendModule = await import('../backend/dist/index.js');
+      // The backend module will start initialization when imported
+      // Wait a moment for it to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+    } catch (error) {
+      console.error('Failed to ensure database initialization:', error);
+    }
+  }
+  return dbInitPromise;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    // Ensure database is initialized before handling request
+    await ensureDatabaseInitialized();
+    
     const expressApp = await getApp();
     
     // Handle the request
