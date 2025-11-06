@@ -23,6 +23,6 @@
     "rollup": "^4.52.5"
   },
   "engines": {
-    "node": "22.x"
+    "node": "18.x"
   }
 }
