@@ -7,9 +7,10 @@ import path from 'path'
 export function createStorageAdapter(): StorageAdapter {
   // Use Vercel KV if:
   // 1. Running on Vercel (VERCEL env var is set)
-  // 2. KV connection string is configured (KV_URL, REDIS_URL, or KV_REST_API_URL)
+  // 2. KV connection string is configured (KV_URL, KV_REDIS_URL, REDIS_URL, or KV_REST_API_URL)
   const useKV = process.env.VERCEL && (
     process.env.KV_URL || 
+    process.env.KV_REDIS_URL ||
     process.env.REDIS_URL ||
     process.env.KV_REST_API_URL ||
     process.env.KV_REST_API_TOKEN ||

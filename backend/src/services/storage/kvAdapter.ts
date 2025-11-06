@@ -1,27 +1,40 @@
 // Vercel KV storage adapter (for production on Vercel)
 import { StorageAdapter } from './adapter'
 
-// Lazy load @vercel/kv to avoid errors in local development
+// Lazy load Redis client to avoid errors in local development
 let kv: any = null
 function getKV() {
   if (!kv) {
     try {
-      // Try to use @vercel/kv - it requires KV_REST_API_URL and KV_REST_API_TOKEN
-      // If REDIS_URL is set instead, we'll need to handle it differently
-      const kvModule = require('@vercel/kv')
-      
-      // Check if we have the required REST API variables
+      // First try @vercel/kv with REST API (preferred for Vercel KV)
       if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+        const kvModule = require('@vercel/kv')
         kv = kvModule.kv
-      } else if (process.env.REDIS_REST_API_URL && process.env.REDIS_REST_API_TOKEN) {
-        // Try with REDIS prefix
+        return kv
+      }
+      
+      // If we have a direct Redis URL (KV_REDIS_URL or REDIS_URL), use redis package
+      const redisUrl = process.env.KV_REDIS_URL || process.env.REDIS_URL
+      if (redisUrl) {
+        const redis = require('redis')
+        const client = redis.createClient({ url: redisUrl })
+        // Connect the client (redis v4+ requires explicit connection)
+        // Don't await here - connection will be established on first operation
+        client.connect().catch((err: any) => {
+          console.error('Redis connection error:', err)
+        })
+        // Ensure client is ready before returning
+        kv = client
+        return kv
+      }
+      
+      // Try @vercel/kv with default env vars
+      try {
+        const kvModule = require('@vercel/kv')
         kv = kvModule.kv
-      } else if (process.env.REDIS_URL) {
-        // REDIS_URL is set but not REST API vars - @vercel/kv won't work
-        // We need to use a Redis client directly or get the REST API vars
-        throw new Error('REDIS_URL is set but KV_REST_API_URL and KV_REST_API_TOKEN are required. Please reconnect the KV store in Vercel dashboard.')
-      } else {
-        throw new Error('KV environment variables are not set')
+        return kv
+      } catch {
+        throw new Error('No KV environment variables found. Need either KV_REST_API_URL/KV_REST_API_TOKEN or KV_REDIS_URL/REDIS_URL')
       }
     } catch (error: any) {
       throw new Error(`Vercel KV is not available: ${error.message}`)
@@ -44,8 +57,17 @@ export class KVAdapter implements StorageAdapter {
   async read(key: string): Promise<string | null> {
     try {
       const kvInstance = getKV()
-      const value = await kvInstance.get(this.getKey(key)) as string | null
-      return value || null
+      const fullKey = this.getKey(key)
+      
+      // Handle both @vercel/kv and redis package APIs
+      if (typeof kvInstance.get === 'function') {
+        const value = await kvInstance.get(fullKey)
+        return typeof value === 'string' ? value : value ? JSON.stringify(value) : null
+      } else {
+        // redis package
+        const value = await kvInstance.get(fullKey)
+        return value || null
+      }
     } catch (error) {
       console.error(`KV read error for key ${key}:`, error)
       throw error
@@ -55,7 +77,15 @@ export class KVAdapter implements StorageAdapter {
   async write(key: string, data: string): Promise<void> {
     try {
       const kvInstance = getKV()
-      await kvInstance.set(this.getKey(key), data)
+      const fullKey = this.getKey(key)
+      
+      // Handle both @vercel/kv and redis package APIs
+      if (typeof kvInstance.set === 'function') {
+        await kvInstance.set(fullKey, data)
+      } else {
+        // redis package
+        await kvInstance.set(fullKey, data)
+      }
     } catch (error) {
       console.error(`KV write error for key ${key}:`, error)
       throw error
@@ -65,7 +95,15 @@ export class KVAdapter implements StorageAdapter {
   async delete(key: string): Promise<void> {
     try {
       const kvInstance = getKV()
-      await kvInstance.del(this.getKey(key))
+      const fullKey = this.getKey(key)
+      
+      // Handle both @vercel/kv and redis package APIs
+      if (typeof kvInstance.del === 'function') {
+        await kvInstance.del(fullKey)
+      } else {
+        // redis package uses del or delete
+        await (kvInstance.del || kvInstance.delete)(fullKey)
+      }
     } catch (error) {
       console.error(`KV delete error for key ${key}:`, error)
       throw error
@@ -75,8 +113,17 @@ export class KVAdapter implements StorageAdapter {
   async exists(key: string): Promise<boolean> {
     try {
       const kvInstance = getKV()
-      const value = await kvInstance.get(this.getKey(key))
-      return value !== null
+      const fullKey = this.getKey(key)
+      
+      // Handle both @vercel/kv and redis package APIs
+      if (typeof kvInstance.exists === 'function') {
+        const result = await kvInstance.exists(fullKey)
+        return result === 1 || result === true
+      } else {
+        // redis package
+        const value = await kvInstance.get(fullKey)
+        return value !== null
+      }
     } catch {
       return false
     }
