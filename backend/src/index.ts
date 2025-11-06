@@ -44,7 +44,7 @@ const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
   : (process.env.NODE_ENV === 'production' 
       ? [] // No origins allowed in production by default - must be configured
-      : ['http://localhost:3000', 'http://localhost:5173']); // Development defaults
+      : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:5173']); // Development defaults
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -53,9 +53,18 @@ app.use(cors({
       return callback(null, true);
     }
     
+    // In development, be more permissive
+    if (process.env.NODE_ENV !== 'production') {
+      // Allow localhost on any port in development
+      if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        return callback(null, true);
+      }
+    }
+    
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn(`CORS blocked origin: ${origin}. Allowed:`, allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
