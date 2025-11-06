@@ -20,7 +20,29 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // Prevent service worker from accessing local network
+        navigateFallback: null,
+        navigateFallbackDenylist: [/^\/api/],
+        // Exclude API routes from service worker caching
+        runtimeCaching: [
+          {
+            urlPattern: /^https?:\/\/.*\/api\/.*/i,
+            handler: 'NetworkOnly',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 10
+            }
+          }
+        ],
+        // Disable network discovery features
+        skipWaiting: true,
+        clientsClaim: true
+      },
+      // Disable service worker in development to avoid local network prompts
+      devOptions: {
+        enabled: false,
+        type: 'module'
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {

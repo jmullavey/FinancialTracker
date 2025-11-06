@@ -1,6 +1,24 @@
 import axios from 'axios';
+
+// Auto-detect API URL: use VITE_API_URL if set, otherwise use same origin in production, localhost in dev
+function getApiBaseURL() {
+  const envUrl = import.meta.env?.VITE_API_URL;
+  if (envUrl) {
+    // Ensure it ends with /api if not already
+    return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+  }
+  
+  // In production (HTTPS), use same origin
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return `${window.location.origin}/api`;
+  }
+  
+  // Development fallback
+  return 'http://localhost:3001/api';
+}
+
 export const api = axios.create({
-    baseURL: import.meta.env?.VITE_API_URL || 'http://localhost:3001/api',
+    baseURL: getApiBaseURL(),
     timeout: 10000,
 });
 // Request interceptor
