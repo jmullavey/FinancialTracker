@@ -22,6 +22,10 @@ async function getApp() {
         if (!app || typeof app !== 'function') {
           throw new Error('Failed to load Express app - invalid export');
         }
+        
+        // Wait a bit for database initialization to complete
+        // The backend exports the app immediately, but database init happens asynchronously
+        await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error: any) {
         console.error('Failed to load backend app:', error);
         throw new Error(`Backend initialization failed: ${error.message}`);

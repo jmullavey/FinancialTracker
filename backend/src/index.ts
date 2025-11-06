@@ -335,10 +335,24 @@ async function startServer() {
   }
 }
 
+// Initialize database for Vercel serverless environment
+// In serverless, we need to initialize on first load, not in startServer()
+let dbInitialized = false;
+const initPromise = initializeDatabase().then(() => {
+  dbInitialized = true;
+  console.log('Database initialized for serverless environment');
+}).catch((error) => {
+  console.error('Database initialization failed:', error);
+  // Don't throw - let requests handle the error
+});
+
 // Only start server if not in Vercel serverless environment
 // In Vercel, the serverless function handler will call the app directly
 if (!process.env.VERCEL) {
   startServer();
+} else {
+  // In Vercel, ensure database is initialized
+  initPromise.catch(console.error);
 }
 
 // Export app for Vercel serverless functions
