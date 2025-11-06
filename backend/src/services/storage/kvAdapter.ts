@@ -6,9 +6,25 @@ let kv: any = null
 function getKV() {
   if (!kv) {
     try {
-      kv = require('@vercel/kv').kv
-    } catch (error) {
-      throw new Error('Vercel KV is not available. Make sure @vercel/kv is installed and KV environment variables are set.')
+      // Try to use @vercel/kv - it requires KV_REST_API_URL and KV_REST_API_TOKEN
+      // If REDIS_URL is set instead, we'll need to handle it differently
+      const kvModule = require('@vercel/kv')
+      
+      // Check if we have the required REST API variables
+      if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+        kv = kvModule.kv
+      } else if (process.env.REDIS_REST_API_URL && process.env.REDIS_REST_API_TOKEN) {
+        // Try with REDIS prefix
+        kv = kvModule.kv
+      } else if (process.env.REDIS_URL) {
+        // REDIS_URL is set but not REST API vars - @vercel/kv won't work
+        // We need to use a Redis client directly or get the REST API vars
+        throw new Error('REDIS_URL is set but KV_REST_API_URL and KV_REST_API_TOKEN are required. Please reconnect the KV store in Vercel dashboard.')
+      } else {
+        throw new Error('KV environment variables are not set')
+      }
+    } catch (error: any) {
+      throw new Error(`Vercel KV is not available: ${error.message}`)
     }
   }
   return kv
