@@ -14,16 +14,9 @@ async function getApp() {
   appPromise = (async () => {
     if (!app) {
       try {
-        // Try both require (CommonJS) and import (ES modules) for compatibility
-        let backendModule: any;
-        
-        try {
-          // First try require (CommonJS) - works in Node.js/Vercel
-          backendModule = require('../backend/dist/index.js');
-        } catch (requireError) {
-          // Fall back to dynamic import (ES modules)
-          backendModule = await import('../backend/dist/index.js');
-        }
+        // Use dynamic import which works in both CommonJS and ES module contexts
+        // In Vercel's serverless environment, this handles module resolution correctly
+        const backendModule = await import('../backend/dist/index.js');
         
         // Extract the app - handle both CommonJS and ES module exports
         app = backendModule.default || backendModule;
