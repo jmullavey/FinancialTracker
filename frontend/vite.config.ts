@@ -24,14 +24,13 @@ export default defineConfig({
         // Prevent service worker from accessing local network
         navigateFallback: null,
         navigateFallbackDenylist: [/^\/api/],
-        // Exclude API routes from service worker caching
+        // Exclude API routes from service worker caching - always use network
         runtimeCaching: [
           {
             urlPattern: /^https?:\/\/.*\/api\/.*/i,
             handler: 'NetworkOnly',
             options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 10
+              cacheName: 'api-cache'
             }
           }
         ],
