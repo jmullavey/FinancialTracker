@@ -356,4 +356,10 @@ if (!process.env.VERCEL) {
 }
 
 // Export app for Vercel serverless functions
+// Use both ES6 and CommonJS exports for compatibility
 export default app;
+// Also export as CommonJS for compatibility
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = app;
+  module.exports.default = app;
+}

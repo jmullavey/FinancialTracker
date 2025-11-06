@@ -14,20 +14,43 @@ async function getApp() {
   appPromise = (async () => {
     if (!app) {
       try {
-        // Dynamic import to ensure backend is built
-        const backendApp = await import('../backend/dist/index.js');
-        app = backendApp.default || backendApp;
+        // Try both require (CommonJS) and import (ES modules) for compatibility
+        let backendModule: any;
+        
+        try {
+          // First try require (CommonJS) - works in Node.js/Vercel
+          backendModule = require('../backend/dist/index.js');
+        } catch (requireError) {
+          // Fall back to dynamic import (ES modules)
+          backendModule = await import('../backend/dist/index.js');
+        }
+        
+        // Extract the app - handle both CommonJS and ES module exports
+        app = backendModule.default || backendModule;
+        
+        // If app is still not a function, it might be wrapped
+        if (app && typeof app !== 'function' && app.default) {
+          app = app.default;
+        }
         
         // Verify app is an Express app
         if (!app || typeof app !== 'function') {
+          console.error('Backend export structure:', {
+            hasDefault: !!backendModule?.default,
+            hasModule: !!backendModule,
+            type: typeof backendModule,
+            appType: typeof app,
+            keys: Object.keys(backendModule || {})
+          });
           throw new Error('Failed to load Express app - invalid export');
         }
         
         // Wait a bit for database initialization to complete
         // The backend exports the app immediately, but database init happens asynchronously
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       } catch (error: any) {
         console.error('Failed to load backend app:', error);
+        console.error('Error stack:', error.stack);
         throw new Error(`Backend initialization failed: ${error.message}`);
       }
     }
